@@ -8,9 +8,12 @@ import cv2
 from deepface import DeepFace
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 import ollama
+import pyttsx3
+import io
+from pydub import AudioSegment
 
 app = FastAPI()
 
@@ -21,6 +24,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize TTS engine
+engine = pyttsx3.init("sapi5")
+voices = engine.getProperty('voices')
+engine.setProperty('voice', voices[1].id)  # Change index if needed
+engine.setProperty('rate', 150)  # Adjust speed
 
 # This endpoint handles the main HTML page at the root URL (/)
 @app.get("/")
@@ -53,7 +62,8 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     if client_id not in user_sessions:
         user_sessions[client_id] = {
             "chat_history": [],
-            "last_emotion": "neutral"
+            "last_emotion": "neutral",
+            "tts_enabled": False
         }
         print(f"New session created for client '{client_id}'.")
 
@@ -107,9 +117,18 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     user_sessions[client_id]["chat_history"].append({"role": "assistant", "content": assistant_message})
                     
                     await websocket.send_json({"type": "chat_response", "content": assistant_message})
+                    
+                    # If TTS is enabled, send audio
+                    if user_sessions[client_id]["tts_enabled"]:
+                        await websocket.send_json({"type": "tts_audio", "text": assistant_message})
+                        
                 except Exception as e:
                     print(f"Ollama chat error: {e}")
                     await websocket.send_json({"type": "chat_response", "content": "Sorry, I am having trouble connecting to the AI. Please try again later."})
+            
+            elif message.get("type") == "toggle_tts":
+                user_sessions[client_id]["tts_enabled"] = message.get("enabled", False)
+                print(f"TTS {'enabled' if message.get('enabled') else 'disabled'} for client '{client_id}'")
 
     except WebSocketDisconnect:
         print(f"Client '{client_id}' disconnected.")

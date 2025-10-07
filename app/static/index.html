@@ -30,6 +30,39 @@
             overflow: hidden;
         }
 
+        /* Custom Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--card-bg);
+            border-radius: 10px;
+            margin: 2px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #555, #777);
+            border-radius: 10px;
+            border: 2px solid var(--card-bg);
+            transition: background 0.3s ease;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #777, #999);
+        }
+        
+        ::-webkit-scrollbar-thumb:active {
+            background: linear-gradient(180deg, #888, #aaa);
+        }
+        
+        /* Firefox Scrollbar */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #555 var(--card-bg);
+        }
+
         .container {
             display: flex;
             gap: 20px;
@@ -106,7 +139,7 @@
             display: flex;
             flex-direction: column;
             margin-bottom: 20px;
-            height: calc(100% - 180px);
+            max-height: 600px;
             position: relative;
         }
 
@@ -126,10 +159,29 @@
             z-index: 1;
             flex-grow: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 15px;
             background-color: rgba(43, 43, 43, 0.7);
             border-radius: 8px;
             margin-bottom: 15px;
+            max-height: 400px;
+            min-height: 300px;
+        }
+
+        .chat-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-content::-webkit-scrollbar-track {
+            background: rgba(43, 43, 43, 0.5);
+            border-radius: 10px;
+        }
+        .chat-content::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--primary-color), #0056b3);
+            border-radius: 10px;
+            border: 2px solid rgba(43, 43, 43, 0.5);
+        }
+        .chat-content::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #0056b3, var(--primary-color));
         }
 
         .chat-message {
@@ -138,6 +190,7 @@
             border-radius: 8px;
             max-width: 85%;
             word-wrap: break-word;
+            word-break: break-word;
             line-height: 1.5;
         }
 
@@ -182,10 +235,11 @@
             border-radius: 6px;
             cursor: pointer;
             font-size: 1.1em;
-            transition: background-color 0.2s;
+            transition: all 0.3s ease;
         }
         .chat-input-controls button:hover {
             background-color: #555;
+            transform: scale(1.05);
         }
 
         .chat-send-bar {
@@ -310,21 +364,6 @@
             background-color: #555;
         }
 
-        .chat-content::-webkit-scrollbar {
-            width: 8px;
-        }
-        .chat-content::-webkit-scrollbar-track {
-            background: var(--card-bg);
-            border-radius: 10px;
-        }
-        .chat-content::-webkit-scrollbar-thumb {
-            background: #555;
-            border-radius: 10px;
-        }
-        .chat-content::-webkit-scrollbar-thumb:hover {
-            background: #777;
-        }
-
         #video-container {
             position: relative;
             width: 100%;
@@ -375,10 +414,11 @@
                 </div>
 
                 <div class="chat-input-controls">
-                    <button>📝</button>
-                    <button>🎤</button>
-                    <button>📷</button>
-                    <button>📁</button>
+                    <button id="note-btn">📝</button>
+                    <button id="mic-btn">🎤</button>
+                    <button id="camera-btn">📷</button>
+                    <button id="file-btn">📁</button>
+                    <button id="tts-toggle" title="Toggle Text-to-Speech">🔇</button>
                 </div>
 
                 <form class="chat-send-bar" id="chat-form">
@@ -420,11 +460,15 @@
     <script>
         // Store data in memory instead of localStorage
         let userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        let ttsEnabled = false;
+        let isListening = false;
 
         // --- Get HTML elements here ---
         const chatForm = document.getElementById('chat-form');
         const userInput = document.getElementById('user-input');
         const chatMessagesDiv = document.getElementById('chat-messages');
+        const ttsToggleBtn = document.getElementById('tts-toggle');
+        const micBtn = document.getElementById('mic-btn');
 
         // --- WebSocket and Webcam Logic ---
         const ws = new WebSocket(`ws://localhost:8000/ws/${userId}`);
@@ -467,6 +511,8 @@
                 updateParticles(emotion);
             } else if (message.type === "chat_response") {
                 displayMessage(message.content, 'assistant');
+            } else if (message.type === "tts_audio") {
+                speakText(message.text);
             }
         };
 
@@ -489,6 +535,81 @@
 
             ws.send(JSON.stringify({ type: "chat_message", content: userMessage }));
         });
+
+        // --- TTS Toggle ---
+        ttsToggleBtn.addEventListener('click', () => {
+            ttsEnabled = !ttsEnabled;
+            ttsToggleBtn.textContent = ttsEnabled ? '🔊' : '🔇';
+            ttsToggleBtn.style.backgroundColor = ttsEnabled ? '#4CAF50' : '#3c3c3c';
+            ws.send(JSON.stringify({ type: "toggle_tts", enabled: ttsEnabled }));
+        });
+
+        // --- Speech Recognition ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-IN';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.style.backgroundColor = '#FF4444';
+                micBtn.style.transform = 'scale(1.1)';
+                userInput.placeholder = 'Listening...';
+                console.log('Speech recognition started');
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                console.log('You said:', transcript);
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                userInput.placeholder = 'Error. Try again...';
+                setTimeout(() => {
+                    userInput.placeholder = 'Type your message...';
+                }, 2000);
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micBtn.style.backgroundColor = '#3c3c3c';
+                micBtn.style.transform = 'scale(1)';
+                userInput.placeholder = 'Type your message...';
+                console.log('Speech recognition ended');
+            };
+        }
+
+        micBtn.addEventListener('click', () => {
+            console.log('Mic button clicked');
+            if (!recognition) {
+                alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
+                return;
+            }
+
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        });
+
+        // --- TTS Function using Web Speech API ---
+        function speakText(text) {
+            if ('speechSynthesis' in window && ttsEnabled) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
 
         // Other utility functions
         function displayMessage(content, role) {
