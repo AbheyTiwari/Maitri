@@ -1,0 +1,26 @@
+Virtual Environment
+Exclude the entire 'chat' directory since it is your venv
+/chat
+
+Dependencies
+Python dependencies installed via pip
+pycache/
+*.pyc
+
+Operating System Files
+.DS_Store
+Thumbs.db
+
+DeepFace / TensorFlow / Model Cache
+DeepFace downloads models into the user's home directory (~/.deepface) or
+sometimes creates local cache folders, but we exclude common OS/Python ones
+.ipynb_checkpoints
+.pytest_cache
+
+Uvicorn/ASGI logs and temporary files
+*.log
+.vscode/
+
+Build artifacts
+dist/
+build/
