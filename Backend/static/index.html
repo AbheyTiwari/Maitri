@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maitri AI सहायक</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #2b2b2b;
+            --text-color: #e0e0e0;
+            --primary-color: #007bff;
+            --accent-color-light: #4CAF50;
+            --accent-color-dark: #FFC107;
+            --border-color: #444;
+            --input-bg: #3c3c3c;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            width: 90%;
+            max-width: 1200px;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 1;
+        }
+
+        .left-panel, .right-panel {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .left-panel {
+            flex: 2;
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        .header .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header .logo {
+            width: 40px;
+            height: 40px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+        .header .title {
+            font-size: 1.6em;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .header .subtitle {
+            font-size: 0.9em;
+            color: #aaa;
+        }
+        .header .info {
+            text-align: right;
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        .chat-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+            height: calc(100% - 180px);
+            position: relative;
+        }
+
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        .chat-content {
+            position: relative;
+            z-index: 1;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: rgba(43, 43, 43, 0.7);
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            max-width: 85%;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .chat-message.system {
+            background-color: #3b3b3b;
+            color: #c7c7c7;
+            align-self: flex-start;
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .chat-message.user {
+            background-color: #555;
+            color: var(--text-color);
+            align-self: flex-end;
+            margin-left: auto;
+            border-right: 3px solid var(--accent-color-light);
+        }
+
+        .chat-message.assistant {
+            background-color: #444;
+            color: var(--text-color);
+            align-self: flex-start;
+            border-left: 3px solid #777;
+        }
+
+        .chat-input-controls {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: center;
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+        }
+
+        .chat-input-controls button {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.2s;
+        }
+        .chat-input-controls button:hover {
+            background-color: #555;
+        }
+
+        .chat-send-bar {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-send-bar input {
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .chat-send-bar button {
+            padding: 12px 20px;
+            background-color: var(--primary-color);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s;
+        }
+        .chat-send-bar button:hover {
+            background-color: #0056b3;
+        }
+
+
+        .data-card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .data-card h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            font-size: 1.2em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        .data-item .label {
+            color: #aaa;
+        }
+        .data-item .value {
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background-color: #555;
+            border-radius: 3px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .progress-bar div {
+            height: 100%;
+            background-color: var(--accent-color-light);
+            border-radius: 3px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .connect-section {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .connect-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .connect-button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+        }
+        .connect-button:hover {
+            background-color: #0056b3;
+        }
+        .wifi-icon {
+            font-size: 1.2em;
+            color: var(--accent-color-light);
+        }
+
+        .wellbeing-protocols {
+            background-color: #3b3b3b;
+            color: var(--text-color);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .wellbeing-protocols:hover {
+            background-color: #555;
+        }
+
+        .chat-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-content::-webkit-scrollbar-track {
+            background: var(--card-bg);
+            border-radius: 10px;
+        }
+        .chat-content::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 10px;
+        }
+        .chat-content::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+
+        #video-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #webcam-video {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            display: none;
+        }
+        #canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <div class="header">
+                <div class="logo-section">
+                    <div class="logo">🪷</div>
+                    <div>
+                        <div class="title">Maitri AI</div>
+                        <div class="subtitle">सहायक</div>
+                    </div>
+                </div>
+                <div class="info">
+                    <span id="current-time"></span> <br>
+                    <span id="current-date"></span> <br>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Emblem_of_India.svg/100px-Emblem_of_India.svg.png" alt="Emblem" style="width: 20px; height: auto; margin-top: 5px;">
+                </div>
+            </div>
+
+            <div class="chat-area">
+                <div id="particles-js"></div>
+                <div class="chat-content" id="chat-messages">
+                    <div class="chat-message system">
+                        Good morning, Commander. I am ready to assist.
+                    </div>
+                </div>
+
+                <div class="chat-input-controls">
+                    <button>📝</button>
+                    <button>🎤</button>
+                    <button>📷</button>
+                    <button>📁</button>
+                </div>
+
+                <form class="chat-send-bar" id="chat-form">
+                    <input type="text" id="user-input" placeholder="Type your message..." required>
+                    <button type="submit">Send</button>
+                </form>
+            </div>
+
+            <div class="connect-section">
+                <button class="connect-button">CONNECT</button>
+                <div class="connect-status">
+                    <span class="wifi-icon">📶</span>
+                    <span>WiFi</span>
+                </div>
+                <button class="wellbeing-protocols">WELLBEING PROTOCOLS</button>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="data-card">
+                <h3>MANAS</h3>
+                <div class="progress-bar"><div id="manas-progress"></div></div>
+                <div class="data-item"><span class="label">Mood:</span> <span class="value" id="manas-mood">Neutral</span></div>
+                <div class="data-item"><span class="label">Stress:</span> <span class="value" id="manas-stress">Low</span></div>
+                <div class="data-item"><span class="label">Emotional Trend:</span> <span class="value" id="manas-emotional-trend">Stable</span></div>
+            </div>
+
+            <div class="data-card">
+                <h3>PRANA</h3>
+                <div id="video-container">
+                    <video id="webcam-video" autoplay muted></video>
+                    <canvas id="canvas-overlay"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        // Store data in memory instead of localStorage
+        let userId = 'user_' + Math.random().toString(36).substr(2, 9);
+
+        // --- Get HTML elements here ---
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatMessagesDiv = document.getElementById('chat-messages');
+
+        // --- WebSocket and Webcam Logic ---
+        const ws = new WebSocket(`ws://localhost:8000/ws/${userId}`);
+        const video = document.createElement('video');
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        let lastEmotion = 'neutral';
+
+        // Initial setup for the webcam and WebSocket connection
+        ws.onopen = async () => {
+            console.log("WebSocket connection established. Starting webcam...");
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.play();
+
+                await new Promise(resolve => video.onloadedmetadata = resolve);
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                setInterval(() => {
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imgData = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+                    ws.send(JSON.stringify({ type: "video_frame", data: imgData }));
+                }, 100);
+
+            } catch (err) {
+                console.error("Error accessing the webcam: ", err);
+            }
+        };
+
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            if (message.type === "emotion_update") {
+                const emotion = message.emotion;
+                lastEmotion = emotion;
+                document.getElementById('manas-mood').textContent = capitalizeFirstLetter(emotion);
+                document.getElementById('manas-stress').textContent = getStressLevel(emotion);
+                updateParticles(emotion);
+            } else if (message.type === "chat_response") {
+                displayMessage(message.content, 'assistant');
+            }
+        };
+
+        ws.onclose = () => {
+            console.log("WebSocket connection closed.");
+        };
+
+        ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+
+        // --- Chat Form Submission ---
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userMessage = userInput.value.trim();
+            if (!userMessage) return;
+
+            displayMessage(userMessage, 'user');
+            userInput.value = '';
+
+            ws.send(JSON.stringify({ type: "chat_message", content: userMessage }));
+        });
+
+        // Other utility functions
+        function displayMessage(content, role) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('chat-message', role);
+            messageElement.textContent = content;
+            chatMessagesDiv.appendChild(messageElement);
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+        }
+
+        function capitalizeFirstLetter(string) {
+            if (!string) return '';
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        function getStressLevel(emotion) {
+            const manasProgress = document.getElementById('manas-progress');
+
+            if (['angry', 'fearful', 'sad'].includes(emotion)) {
+                manasProgress.style.width = '100%';
+                return 'High';
+            } else if (['disgusted', 'surprised'].includes(emotion)) {
+                manasProgress.style.width = '50%';
+                return 'Moderate';
+            } else if (emotion === 'happy') {
+                manasProgress.style.width = '20%';
+                return 'Low';
+            }
+            manasProgress.style.width = '30%';
+            return 'Low';
+        }
+
+        function updateParticles(emotion) {
+            const pJS = window.pJSDom && window.pJSDom[0] ? window.pJSDom[0].pJS : null;
+            if (!pJS) return;
+            
+            let color = "#E0E0E0";
+            let speed = 2;
+
+            if (emotion === 'happy') {
+                color = "#FFC107";
+                speed = 3;
+            } else if (emotion === 'angry' || emotion === 'sad' || emotion === 'fearful') {
+                color = "#FF4D4D";
+                speed = 4;
+            } else {
+                color = "#E0E0E0";
+                speed = 2;
+            }
+
+            pJS.particles.color.value = [color];
+            pJS.particles.move.speed = speed;
+            pJS.fn.particlesRefresh();
+        }
+
+        // Initial particles.js setup
+        particlesJS('particles-js', {
+            "particles": {
+                "number": { "value": 80, "density": { "enable": true, "value_area": 800 } },
+                "color": { "value": "#e0e0e0" },
+                "shape": { "type": "circle" },
+                "opacity": { "value": 0.5, "random": true },
+                "size": { "value": 5, "random": true },
+                "line_linked": { "enable": true, "distance": 150, "color": "#555555", "opacity": 0.4, "width": 1 },
+                "move": { "enable": true, "speed": 2, "direction": "none", "random": false, "straight": false, "out_mode": "out", "bounce": false }
+            },
+            "interactivity": {
+                "detect_on": "canvas",
+                "events": { "onhover": { "enable": true, "mode": "grab" }, "onclick": { "enable": true, "mode": "push" }, "resize": true }
+            },
+            "retina_detect": true
+        });
+    </script>
+</body>
+</html>
