@@ -13,6 +13,5 @@ engine.setProperty('rate', SPEECH_RATE)
 
 def speak(text: str):
     """Speaks the given text aloud."""
-    print(f"INDICA says: {text}")
     engine.say(text)
     engine.runAndWait()
