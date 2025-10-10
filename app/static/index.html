@@ -952,11 +952,8 @@
                 case 'chat_response':
                     hideTypingIndicator();
                     addMessage(message.content, 'assistant');
-                    break;
-                    
-                case 'tts_audio':
                     if (ttsEnabled) {
-                        speakText(message.text);
+                        speakText(message.content);
                     }
                     break;
                     
@@ -980,16 +977,6 @@
                 neutral: '😐'
             };
 
-            const emotionColors = {
-                happy: '#10b981',
-                sad: '#3b82f6',
-                angry: '#ef4444',
-                fearful: '#f59e0b',
-                surprised: '#8b5cf6',
-                disgusted: '#ec4899',
-                neutral: '#6b7280'
-            };
-
             const stressLevels = {
                 happy: { level: 'Low', width: '20%' },
                 neutral: { level: 'Low', width: '30%' },
@@ -1002,10 +989,11 @@
 
             document.getElementById('emotion-icon').textContent = emotionIcons[emotion] || '😐';
             document.getElementById('emotion-label').textContent = emotion.charAt(0).toUpperCase() + emotion.slice(1);
-            document.getElementById('stress-level').textContent = `Stress: ${stressLevels[emotion].level}`;
-            document.getElementById('stress-progress').style.width = stressLevels[emotion].width;
+            if (stressLevels[emotion]) {
+                document.getElementById('stress-level').textContent = `Stress: ${stressLevels[emotion].level}`;
+                document.getElementById('stress-progress').style.width = stressLevels[emotion].width;
+            }
             
-            // Update emotional trend
             document.getElementById('emotional-trend').textContent = 
                 ['angry', 'sad', 'fearful'].includes(emotion) ? 'Elevated' : 'Stable';
         }
@@ -1031,8 +1019,10 @@
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             
-            messageCount++;
-            updateStats();
+            if (role === 'user') {
+                messageCount++;
+                updateStats();
+            }
         }
 
         // Show/hide typing indicator
@@ -1073,7 +1063,7 @@
             this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
 
-        // Voice input (Speech Recognition)
+        // --- UPDATED VOICE RECOGNITION ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
 
@@ -1091,18 +1081,21 @@
             };
 
             recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
+                const transcript = event.results[event.results.length - 1][0].transcript.trim();
                 userInput.value = transcript;
                 userInput.dispatchEvent(new Event('input'));
             };
 
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
-                resetMicButton();
+                alert(`Voice recognition error: ${event.error}. Please check microphone permissions.`);
             };
 
             recognition.onend = () => {
                 resetMicButton();
+                if (userInput.value.trim()) {
+                    sendMessage();
+                }
             };
         }
 
@@ -1110,37 +1103,33 @@
             isListening = false;
             micBtn.classList.remove('listening');
             micBtn.innerHTML = '🎤 Voice';
-            userInput.placeholder = 'Share what\'s on your mind...';
+            userInput.placeholder = "Share what's on your mind...";
         }
 
         micBtn.addEventListener('click', () => {
             if (!recognition) {
-                alert('Speech recognition is not supported in your browser.');
+                alert('Sorry, your browser does not support voice recognition.');
                 return;
             }
-
             if (isListening) {
                 recognition.stop();
             } else {
+                userInput.value = ''; // Clear input before starting
                 recognition.start();
             }
         });
+        // --- END OF UPDATED VOICE RECOGNITION ---
 
         // TTS toggle
         ttsBtn.addEventListener('click', () => {
             ttsEnabled = !ttsEnabled;
             ttsBtn.classList.toggle('active');
             ttsBtn.innerHTML = ttsEnabled ? '🔊 TTS' : '🔇 TTS';
-            
-            ws.send(JSON.stringify({
-                type: 'toggle_tts',
-                enabled: ttsEnabled
-            }));
         });
 
         // Text-to-Speech function
         function speakText(text) {
-            if ('speechSynthesis' in window && ttsEnabled) {
+            if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.rate = 0.9;
                 utterance.pitch = 1.0;
@@ -1190,7 +1179,7 @@
                         data: imageData
                     }));
                 }
-            }, 100);
+            }, 500);
         }
 
         function stopVideoStream() {
@@ -1211,7 +1200,7 @@
             document.getElementById('conversation-time').textContent = `${timeElapsed}m`;
         }
 
-        setInterval(updateStats, 60000); // Update every minute
+        setInterval(updateStats, 60000);
 
         // Logout
         logoutBtn.addEventListener('click', () => {
@@ -1273,3 +1262,4 @@
     </script>
 </body>
 </html>
+
