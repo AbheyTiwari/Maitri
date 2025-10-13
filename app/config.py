@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     # Ollama Configuration
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "phi3:mini")
+    OLLAMA_EMBEDDING_MODEL: str = os.getenv("OLLAMA_EMBEDDING_MODEL", "embeddinggemma:latest")
     OLLAMA_TIMEOUT: int = 30
     
     # AI Configuration
@@ -67,9 +68,12 @@ class Settings(BaseSettings):
     
     # Speech Recognition
     SPEECH_RECOGNITION_LANG: str = "en-IN"
-    TTS_RATE: float = 0.9
-    TTS_PITCH: float = 1.0
-    TTS_VOLUME: float = 1.0
+    
+    # Text-to-Speech (TTS) Configuration - eSpeak-NG
+    TTS_ENABLED: bool = True
+    TTS_LANGUAGE: str = os.getenv("TTS_LANGUAGE", "en-IN")  # Options: en-IN, hi-IN, ta-IN, te-IN, etc.
+    TTS_RATE: int = int(os.getenv("TTS_RATE", "150"))  # Speech rate (80-450): 120=slow, 150=normal, 180=fast
+    TTS_PITCH: int = int(os.getenv("TTS_PITCH", "50"))  # Voice pitch (0-99): 30=low, 50=neutral, 70=high
     
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
@@ -106,9 +110,25 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra environment variables
 
 # Create settings instance
 settings = Settings()
+
+# TTS Language Mapping
+TTS_LANGUAGES = {
+    "en-IN": {"code": "en-in", "name": "English (India)"},
+    "hi-IN": {"code": "hi", "name": "Hindi"},
+    "ta-IN": {"code": "ta", "name": "Tamil"},
+    "te-IN": {"code": "te", "name": "Telugu"},
+    "bn-IN": {"code": "bn", "name": "Bengali"},
+    "gu-IN": {"code": "gu", "name": "Gujarati"},
+    "kn-IN": {"code": "kn", "name": "Kannada"},
+    "ml-IN": {"code": "ml", "name": "Malayalam"},
+    "mr-IN": {"code": "mr", "name": "Marathi"},
+    "pa-IN": {"code": "pa", "name": "Punjabi"},
+    "ur-IN": {"code": "ur", "name": "Urdu"},
+}
 
 # Emotion configurations
 EMOTION_COLORS = {
@@ -222,5 +242,5 @@ WELLNESS_TIPS = {
 }
 
 # Export settings
-__all__ = ['settings', 'EMOTION_COLORS', 'EMOTION_STRESS_LEVELS', 'THEME_KEYWORDS', 
-           'EMOTION_SPECIFIC_PROMPTS', 'CONVERSATION_STARTERS', 'WELLNESS_TIPS']
+__all__ = ['settings', 'TTS_LANGUAGES', 'EMOTION_COLORS', 'EMOTION_STRESS_LEVELS', 
+           'THEME_KEYWORDS', 'EMOTION_SPECIFIC_PROMPTS', 'CONVERSATION_STARTERS', 'WELLNESS_TIPS']

@@ -1,4 +1,4 @@
-# app.py - Complete Enhanced Backend with All Features
+# app.py - Complete Enhanced Backend with TTS Support
 
 import asyncio
 import base64
@@ -21,18 +21,18 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from sr import take_command
 from bson import ObjectId
 
-
 # Import our enhanced systems
 from memory_sytems import EmbeddingMemorySystem
 from games import GameSystem
+from tts import MaitriTTS
+from config import settings
 
 # ===== Configuration =====
-MONGODB_URI = "mongodb://localhost:27017"
-DATABASE_NAME = "maitri_ai"
-SECRET_KEY = "your-secret-key-change-in-production"
-OLLAMA_CHAT_MODEL = "phi3:mini"
-OLLAMA_EMBEDDING_MODEL = "embeddinggemma:latest"
-
+MONGODB_URI = settings.MONGODB_URI
+DATABASE_NAME = settings.DATABASE_NAME
+SECRET_KEY = settings.SECRET_KEY
+OLLAMA_CHAT_MODEL = settings.OLLAMA_MODEL
+OLLAMA_EMBEDDING_MODEL = settings.OLLAMA_EMBEDDING_MODEL
 
 # ===== FastAPI Setup =====
 app = FastAPI(title="Maitri AI Enhanced API")
@@ -55,13 +55,13 @@ facts_collection = db.user_facts
 games_collection = db.game_sessions
 things_collection = db.user_things
 
-
 # Security
 security = HTTPBearer()
 
 # Initialize enhanced systems
 memory_system: Optional[EmbeddingMemorySystem] = None
 game_system: Optional[GameSystem] = None
+tts_engine: Optional[MaitriTTS] = None
 
 # ===== Pydantic Models =====
 class UserSignup(BaseModel):
@@ -84,7 +84,6 @@ class ThingCreate(BaseModel):
 class ThingUpdate(BaseModel):
     content: Optional[str] = None
     status: Optional[str] = None
-
 
 # ===== Utility Functions =====
 def hash_password(password: str) -> str:
@@ -195,6 +194,11 @@ async def handle_chat_logic(user_id: str, user_name: str, user_input: str, sessi
             "content": game_response['message'],
             "game_status": game_response.get('status')
         })
+        
+        # TTS for game responses
+        if session_state["tts_enabled"] and tts_engine:
+            await tts_engine.speak_async(game_response['message'])
+        
         if game_response.get('status') in ['game_won', 'ended', 'correct']:
             await game_system.end_game(user_id)
         return
@@ -223,6 +227,13 @@ async def handle_chat_logic(user_id: str, user_name: str, user_input: str, sessi
         
         # Send response
         await websocket.send_json({"type": "chat_response", "content": assistant_message})
+        
+        # TTS for chat responses
+        if session_state["tts_enabled"] and tts_engine:
+            try:
+                await tts_engine.speak_async(assistant_message)
+            except Exception as tts_error:
+                print(f"TTS error: {tts_error}")
         
         # Proactive game suggestion
         if session_state["message_count"] > 3 and session_state["message_count"] % 7 == 0:
@@ -402,7 +413,7 @@ async def delete_thing(thing_id: str, user: dict = Depends(verify_token)):
 
 @app.websocket("/ws/{token}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
-    """Enhanced WebSocket with memory and game integration."""
+    """Enhanced WebSocket with memory, game, and TTS integration."""
     await websocket.accept()
     
     user = await users_collection.find_one({"session_token": token})
@@ -413,6 +424,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     
     user_id = str(user['_id'])
     user_name = user['name']
+    user_language = user.get('preferred_language', 'en-IN')
     print(f"✓ User '{user_name}' connected")
     
     session_state = {
@@ -423,6 +435,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         "message_count": 0,
         "session_start": datetime.utcnow()
     }
+    
+    # Set TTS language based on user preference
+    if tts_engine:
+        tts_engine.set_language(user_language)
     
     recent_chats = await conversations_collection.find({"user_id": user_id}).sort("timestamp", -1).limit(10).to_list(length=10)
     if recent_chats:
@@ -472,14 +488,39 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 if not game_system.is_game_active(user_id):
                     response = await game_system.start_game(user_id, game_type)
                     await websocket.send_json({"type": "game_started", "content": response['message'], "game_type": game_type, "instructions": response['instructions']})
+                    
+                    # TTS for game start
+                    if session_state["tts_enabled"] and tts_engine:
+                        await tts_engine.speak_async(response['message'])
             
             elif msg_type == "end_game":
                 if game_system.is_game_active(user_id):
                     response = await game_system.end_game(user_id)
                     await websocket.send_json({"type": "game_ended", "content": response['message']})
+                    
+                    # TTS for game end
+                    if session_state["tts_enabled"] and tts_engine:
+                        await tts_engine.speak_async(response['message'])
             
             elif msg_type == "toggle_tts":
                 session_state["tts_enabled"] = message.get("enabled", False)
+                await websocket.send_json({
+                    "type": "tts_toggled", 
+                    "enabled": session_state["tts_enabled"]
+                })
+            
+            elif msg_type == "change_tts_language":
+                new_language = message.get("language", "en-IN")
+                if tts_engine:
+                    tts_engine.set_language(new_language)
+                    await users_collection.update_one(
+                        {"_id": user['_id']},
+                        {"$set": {"preferred_language": new_language}}
+                    )
+                    await websocket.send_json({
+                        "type": "tts_language_changed",
+                        "language": new_language
+                    })
     
     except WebSocketDisconnect:
         print(f"✗ User '{user_name}' disconnected")
@@ -505,7 +546,7 @@ async def get_app_page():
 @app.on_event("startup")
 async def startup_event():
     """Initialize models and systems."""
-    global memory_system, game_system
+    global memory_system, game_system, tts_engine
     
     print("🚀 Starting Maitri AI Enhanced System...")
     
@@ -514,6 +555,21 @@ async def startup_event():
     
     print("🎮 Loading game system...")
     game_system = GameSystem(db)
+    
+    print("🎙️ Initializing TTS...")
+    try:
+        tts_engine = MaitriTTS(
+            language=settings.TTS_LANGUAGE,
+            rate=settings.TTS_RATE,
+            pitch=settings.TTS_PITCH
+        )
+        if tts_engine.enabled:
+            print(f"✓ TTS ready - Language: {settings.TTS_LANGUAGE}, Rate: {settings.TTS_RATE}")
+        else:
+            print("⚠️  TTS not available - Install eSpeak-NG from speech/espeak-ng.msi")
+    except Exception as e:
+        print(f"⚠️  TTS initialization failed: {e}")
+        tts_engine = None
     
     print("😊 Loading emotion detection models...")
     try:
@@ -538,4 +594,3 @@ async def startup_event():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
-
