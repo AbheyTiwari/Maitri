@@ -427,23 +427,7 @@ Contributions are welcome! Please follow these steps:
 4. Push to branch (`git push origin feature/AmazingFeature`)
 5. Open Pull Request
 
-### Development Setup
 
-```bash
-# Install dev dependencies
-pip install pytest black flake8
-
-# Run tests
-pytest tests/
-
-# Format code
-black .
-
-# Lint
-flake8 .
-```
-
----
 
 ## 🐛 Troubleshooting
 
@@ -486,20 +470,6 @@ sudo systemctl status mongod
 
 ---
 
-## 📝 Roadmap
-
-- [ ] Mobile app (React Native)
-- [ ] Offline speech recognition
-- [ ] Mood tracking analytics
-- [ ] Export conversation reports
-- [ ] Integration with mental health professionals
-- [ ] Group therapy sessions
-- [ ] Meditation & breathing exercises
-- [ ] Journaling feature
-- [ ] Crisis detection and intervention
-
----
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -519,8 +489,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 💬 Support
 
 For support:
-- 📧 Email: support@maitri-ai.com
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/maitri-ai/issues)
 - 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/maitri-ai/discussions)
 
 ---
@@ -545,3 +513,4 @@ For support:
 ⭐ Star this repo if it helped you!
 
 </div>
+
